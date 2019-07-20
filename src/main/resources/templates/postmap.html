@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>郵便局マップ</title>
+    <style>
+    #header {
+		position: relative;
+		padding: 0;
+		margin: 0 20px 10px 20px;
+		height:64px;
+		top:10px;
+	  
+		background-color:#F0F0F0;
+		border-radius: 7px;
+	}
+	#header #logo {
+		position:absolute;
+		top:15px; left:10px;
+		z-index: 2;
+	}
+	#header #logo h1 {
+		display:none;
+	}
+	#header #logo a {
+		display:block;
+		width: 165px;
+		height: 30px;
+		background: url("/images/logo.png") no-repeat;
+	}
+	#header #logo a:hover {
+		border-style:none;
+	}
+	#header h2 {
+		position:absolute;
+		top:24px; left:190px;
+		font-size: 92%;
+		color:#888;
+		z-index: 1;
+		white-space:nowrap;
+	}
+	#search_word{
+		position: relative;
+		padding: 0;
+		margin: 10px 20px 10px 20px;
+	}
+	
+    
+    
+    #map {
+    	margin: 0 20px 10px 20px;
+        height: 570px;
+        width: 63%;
+        float: left;
+    }
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    #right-panel {
+        font-family: 'Roboto','sans-serif';
+        line-height: 30px;
+        padding-left: 10px;
+    }
+    #right-panel select, #right-panel input {
+        font-size: 15px;
+    }
+    #right-panel select {
+        width: 100%;
+    }
+    #right-panel i {
+        font-size: 12px;
+    }
+    #right-panel {
+        font-family: Arial, Helvetica, sans-serif;
+        position: absolute;
+        float: right;
+        width: 32%;
+        right: 20px;
+        height: 560px;
+        padding: 5px;
+        z-index: 5;
+        border: 1px solid #999;
+        background: #fff;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        height: 85%;
+        overflow-y: scroll;
+    }
+    li {
+        background-color: #f1f1f1;
+        padding: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    li:nth-child(odd) {
+        background-color: #fcfcfc;
+    }
+    #postlist:hover{
+	  cursor : pointer;
+	  background:#b0c4de;
+	}
+    </style>
+    <script>
+	var myMap;
+	var service;
+	
+	function initMap() {
+		// 初期マップ表示
+        Search()
+    }
+	
+	// 検索実行
+	function Search() {
+		var initPos = new google.maps.LatLng(0,0);
+		initPos = {lat: 35.640, lng: 139.682};
+		var mapOptions = {
+			center : initPos,
+			zoom: 10,
+			mapTypeId : google.maps.MapTypeId.ROADMAP
+		};
+		myMap = new google.maps.Map(document.getElementById("map"), mapOptions);
+		service = new google.maps.places.PlacesService(myMap);
+		var search_keyword = document.getElementById("search_word");
+		var request = {
+			query : search_keyword.value+' ポスト',
+			radius : 4000,
+			location : myMap.getCenter()
+		};
+		service.textSearch(request, searchResult);
+	}
+	 
+	// 検索結果取得
+	function searchResult(results, status) {
+		var bounds = new google.maps.LatLngBounds();
+		for(var i = 0; i < results.length; i++){
+			createMarker({
+				 position : results[i].geometry.location,
+				 text : results[i].name,
+				 map : myMap
+			 });
+			bounds.extend(results[i].geometry.location);
+		}
+		updateLists(results);
+		myMap.fitBounds(bounds);
+	}
+	 
+	// 検索結果に応じマーカー追加
+	function createMarker(options) {
+		options.map = myMap;
+		var marker = new google.maps.Marker(options);
+		// 吹き出しに表示させる処理
+		var infoWnd = new google.maps.InfoWindow();
+		infoWnd.setContent(options.text);
+		google.maps.event.addListener(marker, 'click', function(){
+			infoWnd.open(myMap, marker);
+		});
+		return marker;
+	}
+	
+	function updateLists(results) {
+        var placesList = document.getElementById('places');
+		placesList.innerHTML = "";
+
+		for(var i = 0; i < results.length; i++){
+			var lat = results[i].geometry.location.lat();
+			var lng = results[i].geometry.location.lng();
+			var postname = results[i].name + " (" + results[i].formatted_address +")";
+			var li = document.createElement('li');
+			li.setAttribute("id", "postlist");
+			li.setAttribute("postname", results[i].name);
+			li.setAttribute("lat", latlngFormatter(lat));
+			li.setAttribute("lng", latlngFormatter(lng));
+			li.setAttribute("onClick", "specifyPost();");
+			li.setAttribute("title", postname);
+			li.textContent = postname;
+			placesList.appendChild(li);
+        }
+    }
+	
+	function latlngFormatter(str){
+		var results = str.toString().split('.');
+		return results[0] + "." + results[1].substring(0,3);
+	}
+	
+	function specifyPost(){
+		var clickedItem = event.target;
+		
+		var position = new google.maps.LatLng(clickedItem.getAttribute("lat"), clickedItem.getAttribute("lng"));
+		var mapOptions = {
+				center : position,
+				zoom: 17,
+				mapTypeId : google.maps.MapTypeId.ROADMAP
+			};
+		myMap = new google.maps.Map(document.getElementById("map"), mapOptions);
+		createMarker({
+			position : position,
+			text : clickedItem.getAttribute("postname"),
+			map : myMap
+		});
+	}
+    </script>
+  </head>
+
+	<body>
+	<div id="mainwrapper">
+		<div id="header">
+			<div id="logo"><a href="/" title="home"><h1>ポストマップ</h1></a></div>
+			<h2>郵便局をひたすらマッピング</h2>
+		</div>
+	  
+		<input type="text" size="55" id="search_word" value="東京駅" onkeypress="Search();" />
+		<input type="button" size="55" value="検索" onClick="Search()" />
+	    
+	    <div id="mapwrapper">
+		    <div id="map"></div>
+		    <div id="right-panel">
+				<h2>Results</h2>
+				<ul id="places"></ul>
+		    </div>
+	    </div>
+	</div>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB1UB83oNRr5ZLKdSvyuDUHlh9JPeOg3fc&libraries=places&callback=initMap" async defer></script>
+	</body>
+</html>
